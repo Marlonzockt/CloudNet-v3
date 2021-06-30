@@ -18,7 +18,9 @@ package de.dytanic.cloudnet.ext.bridge.server;
 
 import de.dytanic.cloudnet.driver.CloudNetDriver;
 import de.dytanic.cloudnet.ext.bridge.BridgeHelper;
+import de.dytanic.cloudnet.ext.bridge.BridgeServiceProperty;
 import de.dytanic.cloudnet.wrapper.Wrapper;
+import org.jetbrains.annotations.NotNull;
 
 public class BridgeServerHelper {
 
@@ -108,4 +110,18 @@ public class BridgeServerHelper {
     });
   }
 
+  public static boolean shouldChangeToIngame(@NotNull String motdText) {
+    boolean ingame = Wrapper.getInstance().getCurrentServiceInfoSnapshot()
+      .getProperty(BridgeServiceProperty.IS_IN_GAME).orElse(false);
+    // if the service is already in game we should not fire the change again
+    return !ingame && BridgeServiceProperty.matchesInGameString(motdText);
+  }
+
+  public static void fireServerStateChange(boolean shouldChangeToIngame) {
+    if (shouldChangeToIngame) {
+      BridgeServerHelper.changeToIngame();
+    } else {
+      BridgeHelper.updateServiceInfo();
+    }
+  }
 }

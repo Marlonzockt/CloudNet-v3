@@ -99,17 +99,14 @@ public final class SpongeCloudNetBridgePlugin {
       }
 
       boolean hasToUpdate = false;
-      boolean value = false;
+      boolean changeToIngame = false;
 
       String plainDescription = clientPingServerEvent.getResponse().getDescription().toPlain();
       if (!plainDescription.equalsIgnoreCase(BridgeServerHelper.getMotd())) {
-        hasToUpdate = true;
         BridgeServerHelper.setMotd(plainDescription);
 
-        String lowerMotd = plainDescription.toLowerCase();
-        if (lowerMotd.contains("running") || lowerMotd.contains("ingame") || lowerMotd.contains("playing")) {
-          value = true;
-        }
+        hasToUpdate = true;
+        changeToIngame = BridgeServerHelper.shouldChangeToIngame(plainDescription);
       }
 
       int max = clientPingServerEvent.getResponse().getPlayers().map(StatusResponse.Players::getMax).orElse(-1);
@@ -118,13 +115,8 @@ public final class SpongeCloudNetBridgePlugin {
         BridgeServerHelper.setMaxPlayers(max);
       }
 
-      if (value) {
-        BridgeServerHelper.changeToIngame(true);
-        return;
-      }
-
       if (hasToUpdate) {
-        BridgeHelper.updateServiceInfo();
+        BridgeServerHelper.fireServerStateChange(changeToIngame);
       }
     }, 500, 500, TimeUnit.MILLISECONDS);
   }

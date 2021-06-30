@@ -64,20 +64,17 @@ public final class NukkitCloudNetBridgePlugin extends PluginBase {
   private void runFireServerListPingEvent() {
     Server.getInstance().getScheduler().scheduleRepeatingTask(this, () -> {
       boolean hasToUpdate = false;
-      boolean value = false;
+      boolean changeToIngame = false;
 
       try {
         QueryRegenerateEvent event = new QueryRegenerateEvent(Server.getInstance());
         Server.getInstance().getPluginManager().callEvent(event);
 
         if (!event.getServerName().equalsIgnoreCase(BridgeServerHelper.getMotd())) {
-          hasToUpdate = true;
           BridgeServerHelper.setMotd(event.getServerName());
 
-          String lowerMotd = event.getServerName().toLowerCase();
-          if (lowerMotd.contains("running") || lowerMotd.contains("ingame") || lowerMotd.contains("playing")) {
-            value = true;
-          }
+          hasToUpdate = true;
+          changeToIngame = BridgeServerHelper.shouldChangeToIngame(event.getServerName());
         }
 
         if (event.getMaxPlayerCount() != BridgeServerHelper.getMaxPlayers()) {
@@ -85,13 +82,8 @@ public final class NukkitCloudNetBridgePlugin extends PluginBase {
           BridgeServerHelper.setMaxPlayers(event.getMaxPlayerCount());
         }
 
-        if (value) {
-          BridgeServerHelper.changeToIngame(true);
-          return;
-        }
-
         if (hasToUpdate) {
-          BridgeHelper.updateServiceInfo();
+          BridgeServerHelper.fireServerStateChange(changeToIngame);
         }
       } catch (Exception exception) {
         exception.printStackTrace();
