@@ -133,8 +133,6 @@ public final class Wrapper extends CloudNetDriver implements DriverAPIUser {
     super(logger);
     setInstance(this);
 
-    System.out.println("Hello, I'm the new wrapper.");
-
     super.cloudServiceFactory = new RemoteCloudServiceFactory(this::getNetworkChannel);
     super.generalCloudServiceProvider = new WrapperGeneralCloudServiceProvider(this);
     super.serviceTaskProvider = new WrapperServiceTaskProvider(this);
