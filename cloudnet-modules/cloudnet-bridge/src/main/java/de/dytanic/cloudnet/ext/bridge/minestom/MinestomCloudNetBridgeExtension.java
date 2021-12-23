@@ -49,8 +49,6 @@ public final class MinestomCloudNetBridgeExtension extends Extension {
   public void initialize() {
     MinestomCloudNetHelper.init();
 
-    System.out.println("CloudNetDriver.initializationWorked = " + CloudNetDriver.initializationWorked);
-
     CloudNetDriver.getInstance().getServicesRegistry()
       .registerService(IPlayerManager.class, "BridgePlayerManager", new BridgePlayerManager());
 
