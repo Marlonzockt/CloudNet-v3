@@ -57,6 +57,7 @@ import org.jetbrains.annotations.Nullable;
 public abstract class CloudNetDriver {
 
   private static CloudNetDriver instance;
+  public static boolean initializationWorked = false;
   protected final IServicesRegistry servicesRegistry = new DefaultServicesRegistry();
   protected final IEventManager eventManager = new DefaultEventManager();
   protected final IModuleProvider moduleProvider = new DefaultModuleProvider();
@@ -74,6 +75,7 @@ public abstract class CloudNetDriver {
 
   public CloudNetDriver(@NotNull ILogger logger) {
     this.logger = logger;
+    initializationWorked = true;
   }
 
   public static CloudNetDriver getInstance() {

@@ -89,6 +89,7 @@ allprojects {
     dependencySpongeVersion = '7.3.0'
     dependencyBungeeCordVersion = '1.17-R0.1-SNAPSHOT'
     dependencyVelocityVersion = '1.1.8'
+    dependencyMinestomVersion = '9041250'
     dependencyNukkitXVersion = '1.0-SNAPSHOT'
     dependencyGoMintVersion = '1.0.0-SNAPSHOT'
     dependencyMysqlConnectorJavaVersion = '8.0.25'
@@ -219,8 +220,8 @@ subprojects {
     configFile = project.rootProject.file('checkstyle.xml')
   }
 
-  sourceCompatibility = 1.8
-  targetCompatibility = 1.8
+  sourceCompatibility = 17
+  targetCompatibility = 17
 
   dependencies {
     implementation group: 'org.jetbrains', name: 'annotations', version: dependencyAnnotationsVersion
