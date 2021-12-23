@@ -18,6 +18,7 @@ package de.dytanic.cloudnet.ext.bridge.node.listener;
 
 import de.dytanic.cloudnet.common.io.FileUtils;
 import de.dytanic.cloudnet.driver.event.EventListener;
+import de.dytanic.cloudnet.driver.service.ServiceEnvironmentType;
 import de.dytanic.cloudnet.driver.util.DefaultModuleHelper;
 import de.dytanic.cloudnet.event.service.CloudServicePreStartEvent;
 import de.dytanic.cloudnet.ext.bridge.node.CloudNetBridgeModule;
@@ -33,7 +34,9 @@ public final class IncludePluginListener {
       .noneMatch(excludedGroup -> Arrays.asList(event.getCloudService().getServiceConfiguration().getGroups())
         .contains(excludedGroup));
 
-    Path pluginsFolder = event.getCloudService().getDirectoryPath().resolve("plugins");
+    final ServiceEnvironmentType environment = event.getCloudService().getServiceConfiguration().getProcessConfig()
+      .getEnvironment();
+    Path pluginsFolder = event.getCloudService().getDirectoryPath().resolve(environment.getPluginDirName());
     FileUtils.createDirectoryReported(pluginsFolder);
 
     Path targetFile = pluginsFolder.resolve("cloudnet-bridge.jar");
@@ -43,7 +46,7 @@ public final class IncludePluginListener {
       .copyCurrentModuleInstanceFromClass(IncludePluginListener.class, targetFile)) {
       DefaultModuleHelper.copyPluginConfigurationFileForEnvironment(
         IncludePluginListener.class,
-        event.getCloudService().getServiceConfiguration().getProcessConfig().getEnvironment(),
+        environment,
         targetFile
       );
     }

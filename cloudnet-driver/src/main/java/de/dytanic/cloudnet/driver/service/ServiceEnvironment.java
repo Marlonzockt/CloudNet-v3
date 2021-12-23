@@ -44,7 +44,9 @@ public enum ServiceEnvironment {
   //GoMint
   @Deprecated GO_MINT_DEFAULT("gomint"),
   //Velocity
-  VELOCITY_DEFAULT("velocity");
+  VELOCITY_DEFAULT("velocity"),
+  //Minestom
+  MINESTOM_DEFAULT("minestom");
 
   private final String name;
 
