@@ -17,6 +17,8 @@
 package eu.cloudnetservice.cloudnet.ext.npcs;
 
 import de.dytanic.cloudnet.ext.bridge.WorldPosition;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import lombok.EqualsAndHashCode;
@@ -46,6 +48,8 @@ public class CloudNPC {
   private NPCAction rightClickAction = NPCAction.OPEN_INVENTORY;
 
   private NPCAction leftClickAction = NPCAction.DIRECT_CONNECT_HIGHEST_PLAYERS;
+
+  private Queue<UUID> playerQueue = new LinkedList<>();
 
   public CloudNPC() {
   }
@@ -149,6 +153,10 @@ public class CloudNPC {
 
   public void setLeftClickAction(NPCAction leftClickAction) {
     this.leftClickAction = leftClickAction;
+  }
+
+  public Queue<UUID> getPlayerQueue() {
+    return playerQueue;
   }
 
   public static class NPCProfileProperty {
