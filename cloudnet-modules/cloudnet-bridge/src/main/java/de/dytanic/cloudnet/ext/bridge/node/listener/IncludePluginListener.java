@@ -36,7 +36,7 @@ public final class IncludePluginListener {
 
     final ServiceEnvironmentType environment = event.getCloudService().getServiceConfiguration().getProcessConfig()
       .getEnvironment();
-    Path pluginsFolder = event.getCloudService().getDirectoryPath().resolve(environment.getPluginDirName());
+    Path pluginsFolder = event.getCloudService().getDirectoryPath().resolve(environment.getPluginDirectory());
     FileUtils.createDirectoryReported(pluginsFolder);
 
     Path targetFile = pluginsFolder.resolve("cloudnet-bridge.jar");
