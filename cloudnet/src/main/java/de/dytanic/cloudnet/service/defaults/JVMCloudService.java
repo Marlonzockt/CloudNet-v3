@@ -233,6 +233,7 @@ final class JVMCloudService extends DefaultMinecraftCloudService implements IClo
         try {
           if (this.serviceInfoSnapshot.getConfiguration().getProcessConfig().getEnvironment().isMinestom()) {
             this.process.destroy();
+            Thread.sleep(100);
           } else {
             OutputStream outputStream = this.process.getOutputStream();
             outputStream.write("stop\n".getBytes());
