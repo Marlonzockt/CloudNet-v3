@@ -16,8 +16,6 @@
 
 package de.dytanic.cloudnet.driver.service;
 
-import static de.dytanic.cloudnet.driver.service.ServiceEnvironment.MINESTOM_DEFAULT;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,14 +54,19 @@ public enum ServiceEnvironmentType {
     }
   },
   MINESTOM(
-    new ServiceEnvironment[]{MINESTOM_DEFAULT},
+    new ServiceEnvironment[]{ServiceEnvironment.MINESTOM_DEFAULT},
     MinecraftServiceType.JAVA_SERVER,
     44955,
     new String[]{">"}
   ) {
     @Override
-    public String getPluginDirName() {
-      return "extensions";
+    public Path getPluginDirectory() {
+      return Path.of("extensions");
+    }
+
+    @Override
+    public boolean isMinestom() {
+      return true;
     }
   },
   GLOWSTONE(new ServiceEnvironment[]{ServiceEnvironment.GLOWSTONE_DEFAULT},
@@ -212,7 +215,17 @@ public enum ServiceEnvironmentType {
     return this.ignoredConsoleLines;
   }
 
-  public String getPluginDirName() {
-    return "plugins";
+  /**
+   * @return the relative directory for plugins / extensions of this service environment type
+   */
+  public Path getPluginDirectory() {
+    return Path.of("plugins");
+  }
+
+  /**
+   * @return true if this is minestom, false otherwise
+   */
+  public boolean isMinestom() {
+    return false;
   }
 }
