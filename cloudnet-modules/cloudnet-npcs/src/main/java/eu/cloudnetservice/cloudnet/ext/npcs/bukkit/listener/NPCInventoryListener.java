@@ -19,17 +19,16 @@ package eu.cloudnetservice.cloudnet.ext.npcs.bukkit.listener;
 import com.github.juliarn.npc.event.PlayerNPCInteractEvent;
 import de.dytanic.cloudnet.common.collection.Pair;
 import de.dytanic.cloudnet.driver.CloudNetDriver;
-import de.dytanic.cloudnet.driver.service.GroupConfiguration;
 import de.dytanic.cloudnet.driver.service.ServiceInfoSnapshot;
-import de.dytanic.cloudnet.driver.service.ServiceTask;
 import de.dytanic.cloudnet.ext.bridge.BridgeServiceProperty;
-import de.dytanic.cloudnet.ext.bridge.ServiceInfoStateWatcher.ServiceInfoState;
 import de.dytanic.cloudnet.ext.bridge.player.IPlayerManager;
 import de.dytanic.cloudnet.ext.bridge.player.executor.PlayerExecutor;
+import de.dytanic.cloudnet.ext.bridge.proxy.BridgeProxyHelper;
 import eu.cloudnetservice.cloudnet.ext.npcs.CloudNPC;
 import eu.cloudnetservice.cloudnet.ext.npcs.NPCAction;
 import eu.cloudnetservice.cloudnet.ext.npcs.bukkit.BukkitNPCManagement;
 import eu.cloudnetservice.cloudnet.ext.npcs.bukkit.BukkitNPCProperties;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -129,36 +128,42 @@ public class NPCInventoryListener implements Listener {
           }
         } else if (npcAction == NPCAction.QUEUE_UP) {
           String groupName = cloudNPC.getTargetGroup();
-          GroupConfiguration group = CloudNetDriver.getInstance().getGroupConfigurationProvider()
-            .getGroupConfiguration(groupName);
-          if (group == null) {
-            player.sendMessage("§cCannot queue up for that targetGroup");
-            return;
-          }
-          UUID uuid = player.getUniqueId();
-          Queue<UUID> queue = cloudNPC.getPlayerQueue();
-          if (queue.remove(uuid)) {
-            player.sendMessage("§aRemoved you from the %s §aqueue".formatted(cloudNPC.getDisplayName()));
-          } else {
-            queue.add(uuid);
-            player.sendMessage("§aSuccessfully queued you up for " + cloudNPC.getDisplayName());
-            if (queue.size() > 1) {
-              Optional<ServiceInfoSnapshot> optService = npcManagement.filterNPCServices(cloudNPC).stream()
-                .filter(pair -> pair.getSecond() == ServiceInfoState.EMPTY_ONLINE).map(Pair::getFirst)
-                .filter(service -> getPlayersNeeded(service) <= queue.size()).findAny();
-              ServiceInfoSnapshot service = optService.orElse(null);
-              if (service == null) {
-                player.sendMessage("§cNo server was found.");
+          CloudNetDriver.getInstance().getGroupConfigurationProvider()
+            .getGroupConfigurationAsync(groupName).onComplete(group -> {
+              if (group == null) {
+                player.sendMessage("§cCannot queue up for that targetGroup");
                 return;
               }
-              for (int i = 0; i < getPlayersNeeded(service); i++) {
-                UUID toMove = queue.remove();
-                PlayerExecutor playerExecutor = playerManager.getPlayerExecutor(toMove);
-                playerExecutor.connect(service.getName());
+              UUID uuid = player.getUniqueId();
+              Queue<UUID> queue = cloudNPC.getPlayerQueue();
+              if (queue.remove(uuid)) {
+                player.sendMessage("§aRemoved you from the %s §aqueue".formatted(cloudNPC.getDisplayName()));
+              } else {
+                queue.add(uuid);
+                player.sendMessage("§aSuccessfully queued you up for " + cloudNPC.getDisplayName());
+                if (queue.size() > 1) {
+                  Collection<ServiceInfoSnapshot> cachedServiceInfoSnapshots = BridgeProxyHelper.getCachedServiceInfoSnapshots();
+                  System.out.println("cachedServiceInfoSnapshots = " + cachedServiceInfoSnapshots);
+                  Optional<ServiceInfoSnapshot> optService = cachedServiceInfoSnapshots
+                    .stream()
+                    .filter(service -> service.getProperty(BridgeServiceProperty.IS_EMPTY).orElse(false))
+                    .filter(service -> getPlayersNeeded(service) <= queue.size())
+                    .filter(service -> service.getConfiguration().hasGroup(groupName))
+                    .findAny();
+                  ServiceInfoSnapshot service = optService.orElse(null);
+                  if (service == null) {
+                    player.sendMessage("§cNo server was found.");
+                    return;
+                  }
+                  for (int i = 0; i < getPlayersNeeded(service); i++) {
+                    UUID toMove = queue.remove();
+                    PlayerExecutor playerExecutor = playerManager.getPlayerExecutor(toMove);
+                    playerExecutor.connect(service.getName());
+                  }
+                }
               }
-            }
-          }
-          npcManagement.updateNPC(cloudNPC);
+              npcManagement.updateNPC(cloudNPC);
+            });
         }
       }
 
@@ -167,9 +172,7 @@ public class NPCInventoryListener implements Listener {
   }
 
   private int getPlayersNeeded(ServiceInfoSnapshot service) {
-    ServiceTask task = CloudNetDriver.getInstance().getServiceTaskProvider()
-      .getServiceTask(service.getServiceId().getTaskName());
-    return task.getProperties().getInt("playersNeeded");
+    return (int) service.getProperties().getProperties("queueConfig").get("playersNeeded");
   }
 
   @EventHandler
