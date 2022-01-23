@@ -49,8 +49,6 @@ public class CloudNPC {
 
   private NPCAction leftClickAction = NPCAction.DIRECT_CONNECT_HIGHEST_PLAYERS;
 
-  private Queue<UUID> playerQueue = new LinkedList<>();
-
   public CloudNPC() {
   }
 
@@ -153,10 +151,6 @@ public class CloudNPC {
 
   public void setLeftClickAction(NPCAction leftClickAction) {
     this.leftClickAction = leftClickAction;
-  }
-
-  public Queue<UUID> getPlayerQueue() {
-    return playerQueue;
   }
 
   public static class NPCProfileProperty {

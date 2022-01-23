@@ -18,6 +18,7 @@ package eu.cloudnetservice.cloudnet.ext.npcs.bukkit.listener;
 
 import com.github.juliarn.npc.event.PlayerNPCInteractEvent;
 import de.dytanic.cloudnet.common.collection.Pair;
+import de.dytanic.cloudnet.common.document.gson.JsonDocument;
 import de.dytanic.cloudnet.driver.CloudNetDriver;
 import de.dytanic.cloudnet.driver.service.GroupConfiguration;
 import de.dytanic.cloudnet.driver.service.ServiceInfoSnapshot;
@@ -32,6 +33,7 @@ import eu.cloudnetservice.cloudnet.ext.npcs.bukkit.BukkitNPCManagement;
 import eu.cloudnetservice.cloudnet.ext.npcs.bukkit.BukkitNPCProperties;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -136,16 +138,20 @@ public class NPCInventoryListener implements Listener {
             return;
           }
           UUID uuid = player.getUniqueId();
-          Queue<UUID> queue = cloudNPC.getPlayerQueue();
+          Queue<UUID> queue = npcManagement.getQueues().computeIfAbsent(group.getName(), key -> new LinkedList<>());
           if (queue.remove(uuid)) {
             player.sendMessage("§aRemoved you from the %s §aqueue".formatted(cloudNPC.getDisplayName()));
+            if (queue.isEmpty()) {
+              npcManagement.getQueues().remove(group.getName());
+            }
           } else {
             queue.add(uuid);
             player.sendMessage("§aSuccessfully queued you up for " + cloudNPC.getDisplayName());
             if (queue.size() > 1) {
               Optional<ServiceInfoSnapshot> optService = npcManagement.filterNPCServices(cloudNPC).stream()
                 .filter(pair -> pair.getSecond() == ServiceInfoState.EMPTY_ONLINE).map(Pair::getFirst)
-                .filter(service -> getPlayersNeeded(service) <= queue.size()).findAny();
+                .filter(service -> getPlayersNeeded(service) <= queue.size())
+                .findAny();
               ServiceInfoSnapshot service = optService.orElse(null);
               if (service == null) {
                 player.sendMessage("§cNo server was found.");
@@ -169,7 +175,11 @@ public class NPCInventoryListener implements Listener {
   private int getPlayersNeeded(ServiceInfoSnapshot service) {
     ServiceTask task = CloudNetDriver.getInstance().getServiceTaskProvider()
       .getServiceTask(service.getServiceId().getTaskName());
-    return task.getProperties().getInt("playersNeeded");
+    JsonDocument queueConfig = task.getProperties().getDocument("queueConfig");
+    if (queueConfig == null) {
+      return -1;
+    }
+    return queueConfig.getInt("playersNeeded");
   }
 
   @EventHandler
@@ -199,7 +209,7 @@ public class NPCInventoryListener implements Listener {
   @EventHandler
   public void onPlayerQuit(PlayerQuitEvent e) {
     UUID uuid = e.getPlayer().getUniqueId();
-    npcManagement.getCloudNPCS().forEach(npc -> npc.getPlayerQueue().remove(uuid));
+    npcManagement.getQueues().values().forEach(queue -> queue.remove(uuid));
   }
 
 }

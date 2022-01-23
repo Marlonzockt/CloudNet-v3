@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
@@ -56,6 +57,8 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
   private final NPCPool npcPool;
   private final Map<UUID, BukkitNPCProperties> npcProperties = new HashMap<>();
   private ItemStack[] defaultItems;
+
+  private final Map<String, Queue<UUID>> queues = new HashMap<>();
 
   public BukkitNPCManagement(@NotNull JavaPlugin javaPlugin) {
     this.javaPlugin = javaPlugin;
@@ -221,7 +224,11 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
 
     String onlineServers = String.valueOf(services.size());
 
-    String playersInQueue = String.valueOf(cloudNPC.getPlayerQueue().size());
+    String playersInQueue = "0";
+    Queue<UUID> queue = getQueues().get(cloudNPC.getTargetGroup());
+    if (queue != null) {
+      playersInQueue = String.valueOf(queue.size());
+    }
 
     String infoLine = cloudNPC.getInfoLine()
       .replace("%group%", cloudNPC.getTargetGroup()).replace("%g%", cloudNPC.getTargetGroup())
@@ -350,6 +357,10 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
 
   public Map<UUID, BukkitNPCProperties> getNPCProperties() {
     return this.npcProperties;
+  }
+
+  public Map<String, Queue<UUID>> getQueues() {
+    return queues;
   }
 
 }
