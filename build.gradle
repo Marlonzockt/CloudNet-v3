@@ -84,7 +84,6 @@ allprojects {
     dependencySpongeVersion = '7.3.0'
     dependencyBungeeCordVersion = '1.17-R0.1-SNAPSHOT'
     dependencyVelocityVersion = '1.1.8'
-    dependencyMinestomVersion = '9041250'
     dependencyNukkitXVersion = '1.0-SNAPSHOT'
     dependencyGoMintVersion = '1.0.0-SNAPSHOT'
     dependencyWaterdogPEVersion = '1.1.6-SNAPSHOT'
