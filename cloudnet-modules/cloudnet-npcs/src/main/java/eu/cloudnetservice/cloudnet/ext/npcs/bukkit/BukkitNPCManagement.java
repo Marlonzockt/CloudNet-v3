@@ -31,15 +31,18 @@ import eu.cloudnetservice.cloudnet.ext.npcs.AbstractNPCManagement;
 import eu.cloudnetservice.cloudnet.ext.npcs.CloudNPC;
 import eu.cloudnetservice.cloudnet.ext.npcs.configuration.NPCConfiguration;
 import eu.cloudnetservice.cloudnet.ext.npcs.configuration.NPCConfigurationEntry;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.ArmorStand;
@@ -48,9 +51,25 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.NumberConversions;
 import org.jetbrains.annotations.NotNull;
 
 public class BukkitNPCManagement extends AbstractNPCManagement {
+
+  private static final MethodHandle CHUNK_ENTITIES_LOADED;
+  private static final Pair<Boolean, Optional<ArmorStand>> DISCARD = new Pair<>(false, Optional.empty());
+  private static final Pair<Boolean, Optional<ArmorStand>> RETRY = new Pair<>(true, Optional.empty());
+
+  static {
+    MethodHandle entityLookup = null;
+    try {
+      entityLookup = MethodHandles.lookup()
+        .findVirtual(Chunk.class, "isEntitiesLoaded", MethodType.methodType(boolean.class));
+    } catch (NoSuchMethodException | IllegalAccessException ignored) {
+      // ignore
+    }
+    CHUNK_ENTITIES_LOADED = entityLookup;
+  }
 
   private final JavaPlugin javaPlugin;
 
@@ -117,18 +136,36 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
   }
 
   public void shutdown() {
-    super.cloudNPCS.forEach(cloudNPC -> this.getInfoLineStand(cloudNPC).ifPresent(Entity::remove));
+    super.cloudNPCS.forEach(cloudNPC -> this.getInfoLineStand(cloudNPC).getSecond().ifPresent(Entity::remove));
   }
 
-  public Optional<ArmorStand> getInfoLineStand(@NotNull CloudNPC cloudNPC) {
+  public Pair<Boolean, Optional<ArmorStand>> getInfoLineStand(@NotNull CloudNPC cloudNPC) {
     return this.getInfoLineStand(cloudNPC, true);
   }
 
-  public Optional<ArmorStand> getInfoLineStand(@NotNull CloudNPC cloudNPC, boolean doSpawnIfMissing) {
+  public Pair<Boolean, Optional<ArmorStand>> getInfoLineStand(@NotNull CloudNPC cloudNPC, boolean doSpawnIfMissing) {
     Location location = this.toLocation(cloudNPC.getPosition());
 
-    if (location.getWorld() == null || !location.getChunk().isLoaded()) {
-      return Optional.empty();
+    int chunkX = NumberConversions.floor(location.getX()) >> 4;
+    int chunkZ = NumberConversions.floor(location.getZ()) >> 4;
+
+    if (location.getWorld() == null || !location.getWorld().isChunkLoaded(chunkX, chunkZ)) {
+      return DISCARD;
+    }
+
+    // get the chunk into which we want to spawn the npc
+    // we can do this now as we previously checked if the chunk is already loaded
+    // this check is required as sometimes the server loads "Imposter" chunks which will not load entity data
+    // but rather spawn entities for the client without noticing that on the server
+    // this check validates that the server has successfully loaded all entities before trying to spawn one
+    Chunk chunk = location.getChunk();
+
+    try {
+      if (CHUNK_ENTITIES_LOADED != null && !(boolean) CHUNK_ENTITIES_LOADED.invoke(chunk)) {
+        return RETRY;
+      }
+    } catch (Throwable ignored) {
+      // ignore
     }
 
     double infoLineDistance = super.ownNPCConfigurationEntry.getInfoLineDistance();
@@ -153,7 +190,7 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
       armorStand.setCustomNameVisible(true);
     }
 
-    return Optional.ofNullable(armorStand);
+    return new Pair<>(false, Optional.ofNullable(armorStand));
   }
 
   @Override
@@ -208,34 +245,32 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
   }
 
   private void updateInfoLine(CloudNPC cloudNPC, List<ServiceInfoSnapshot> services) {
-    String onlinePlayers = String.valueOf(
-      services.stream()
-        .mapToInt(serviceInfoSnapshot -> serviceInfoSnapshot.getProperty(BridgeServiceProperty.ONLINE_COUNT).orElse(0))
-        .sum()
-    );
-
-    String maxPlayers = String.valueOf(
-      services.stream()
-        .mapToInt(serviceInfoSnapshot -> serviceInfoSnapshot.getProperty(BridgeServiceProperty.MAX_PLAYERS).orElse(0))
-        .sum()
-    );
-
-    String onlineServers = String.valueOf(services.size());
-
-    String playersInQueue = "0";
-    Queue<UUID> queue = getQueues().get(cloudNPC.getTargetGroup());
-    if (queue != null) {
-      playersInQueue = String.valueOf(queue.size());
+    Pair<Boolean, Optional<ArmorStand>> result = this.getInfoLineStand(cloudNPC);
+    if (result.getFirst()) {
+      // retry later
+      Bukkit.getScheduler().runTaskLater(this.javaPlugin, () -> this.updateNPC(cloudNPC), 10);
+      return;
     }
 
-    String infoLine = cloudNPC.getInfoLine()
-      .replace("%group%", cloudNPC.getTargetGroup()).replace("%g%", cloudNPC.getTargetGroup())
-      .replace("%online_players%", onlinePlayers).replace("%o_p%", onlinePlayers)
-      .replace("%max_players%", maxPlayers).replace("%m_p%", maxPlayers)
-      .replace("%online_servers%", onlineServers).replace("%o_s%", onlineServers)
-      .replace("%players_in_queue%", playersInQueue);
+    result.getSecond().ifPresent(stand -> {
+      String onlinePlayers = String.valueOf(services.stream()
+        .mapToInt(service -> service.getProperty(BridgeServiceProperty.ONLINE_COUNT).orElse(0))
+        .sum());
+      String maxPlayers = String.valueOf(services.stream()
+        .mapToInt(service -> service.getProperty(BridgeServiceProperty.MAX_PLAYERS).orElse(0))
+        .sum());
+      String onlineServers = String.valueOf(services.size());
 
-    this.getInfoLineStand(cloudNPC).ifPresent(infoLineStand -> infoLineStand.setCustomName(infoLine));
+      // assemble the info line
+      String infoLine = cloudNPC.getInfoLine()
+        .replace("%group%", cloudNPC.getTargetGroup()).replace("%g%", cloudNPC.getTargetGroup())
+        .replace("%online_players%", onlinePlayers).replace("%o_p%", onlinePlayers)
+        .replace("%max_players%", maxPlayers).replace("%m_p%", maxPlayers)
+        .replace("%online_servers%", onlineServers).replace("%o_s%", onlineServers);
+
+      // update the stand
+      stand.setCustomName(infoLine);
+    });
   }
 
   private void createNPC(CloudNPC cloudNPC) {
@@ -286,7 +321,7 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
   }
 
   private void destroyNPC(CloudNPC cloudNPC) {
-    this.getInfoLineStand(cloudNPC).ifPresent(Entity::remove);
+    this.getInfoLineStand(cloudNPC).getSecond().ifPresent(Entity::remove);
 
     BukkitNPCProperties properties = this.npcProperties.remove(cloudNPC.getUUID());
 
