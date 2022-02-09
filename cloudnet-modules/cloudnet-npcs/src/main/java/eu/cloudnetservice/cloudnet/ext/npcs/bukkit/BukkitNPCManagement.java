@@ -58,8 +58,6 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
   private final Map<UUID, BukkitNPCProperties> npcProperties = new HashMap<>();
   private ItemStack[] defaultItems;
 
-  private final Map<String, Queue<UUID>> queues = new HashMap<>();
-
   public BukkitNPCManagement(@NotNull JavaPlugin javaPlugin) {
     this.javaPlugin = javaPlugin;
     this.npcPool = NPCPool.builder(javaPlugin)
@@ -357,10 +355,6 @@ public class BukkitNPCManagement extends AbstractNPCManagement {
 
   public Map<UUID, BukkitNPCProperties> getNPCProperties() {
     return this.npcProperties;
-  }
-
-  public Map<String, Queue<UUID>> getQueues() {
-    return queues;
   }
 
 }

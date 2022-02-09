@@ -33,7 +33,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,6 +46,8 @@ public abstract class AbstractNPCManagement extends ServiceInfoStateWatcher {
   protected final Map<ServiceInfoState, NPCConfigurationEntry.ItemLayout> itemLayouts = new HashMap<>();
   protected NPCConfiguration npcConfiguration;
   protected NPCConfigurationEntry ownNPCConfigurationEntry;
+
+  private final Map<String, Queue<UUID>> queues = new HashMap<>();
 
   public AbstractNPCManagement() {
     this.setNPCConfiguration(this.getNPCConfigurationFromNode());
@@ -242,4 +246,8 @@ public abstract class AbstractNPCManagement extends ServiceInfoStateWatcher {
     return new HashSet<>(this.cloudNPCS);
   }
 
+
+  public Map<String, Queue<UUID>> getQueues() {
+    return queues;
+  }
 }
