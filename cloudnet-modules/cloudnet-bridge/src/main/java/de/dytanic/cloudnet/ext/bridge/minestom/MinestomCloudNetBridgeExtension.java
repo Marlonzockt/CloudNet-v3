@@ -22,7 +22,6 @@ import de.dytanic.cloudnet.ext.bridge.BridgeConfiguration;
 import de.dytanic.cloudnet.ext.bridge.BridgeConfigurationProvider;
 import de.dytanic.cloudnet.ext.bridge.BridgeHelper;
 import de.dytanic.cloudnet.ext.bridge.BridgePlayerManager;
-import de.dytanic.cloudnet.ext.bridge.OnlyProxyProtection;
 import de.dytanic.cloudnet.ext.bridge.listener.BridgeCustomChannelMessageListener;
 import de.dytanic.cloudnet.ext.bridge.minestom.listener.MinestomCloudNetListener;
 import de.dytanic.cloudnet.ext.bridge.player.IPlayerManager;
@@ -36,14 +35,12 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.player.AsyncPlayerPreLoginEvent;
 import net.minestom.server.event.server.ServerListPingEvent;
 import net.minestom.server.extensions.Extension;
-import net.minestom.server.extras.MojangAuth;
 import net.minestom.server.ping.ResponseData;
 import net.minestom.server.ping.ServerListPingType;
 
 public final class MinestomCloudNetBridgeExtension extends Extension {
 
   private final LegacyComponentSerializer serializer = LegacyComponentSerializer.legacy('&');
-  private OnlyProxyProtection onlyProxyProtection;
 
   @Override
   public void initialize() {
@@ -66,17 +63,10 @@ public final class MinestomCloudNetBridgeExtension extends Extension {
   }
 
   private void initListeners() {
-    onlyProxyProtection = new OnlyProxyProtection(MojangAuth.isEnabled());
     //Minestom
     getEventNode().addListener(AsyncPlayerPreLoginEvent.class, event -> {
       Player player = event.getPlayer();
       BridgeConfiguration bridgeConfiguration = BridgeConfigurationProvider.load();
-
-      if (this.onlyProxyProtection.shouldDisallowPlayer(event.getPlayer().getPlayerConnection().getServerAddress())) {
-        event.getPlayer().kick(serializer
-          .deserialize(bridgeConfiguration.getMessages().get("server-join-cancel-because-only-proxy")));
-        return;
-      }
 
       String currentTaskName = Wrapper.getInstance().getServiceId().getTaskName();
       ServiceTask serviceTask = Wrapper.getInstance().getServiceTaskProvider().getServiceTask(currentTaskName);
